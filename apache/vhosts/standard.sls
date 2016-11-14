@@ -5,23 +5,27 @@ include:
 
 {% for id, site in salt['pillar.get']('apache:sites', {}).items() %}
 {% set documentroot = site.get('DocumentRoot', '{0}/{1}'.format(apache.wwwdir, id)) %}
+{%- set managed = site.get('managed', True) %}
 
 {{ id }}:
-  file:
-    - managed
+  file.managed:
     - name: {{ apache.vhostdir }}/{{ id }}{{ apache.confext }}
+{%- if managed != False %}
     - source: {{ site.get('template_file', 'salt://apache/vhosts/standard.tmpl') }}
     - template: {{ site.get('template_engine', 'jinja') }}
     - context:
         id: {{ id|json }}
         site: {{ site|json }}
         map: {{ apache|json }}
+{%- else %}
+    - replace: False
+{%- endif %}
     - require:
       - pkg: apache
     - watch_in:
       - module: apache-reload
 
-{% if site.get('DocumentRoot') != False %}
+{% if managed != False and site.get('DocumentRoot') != False %}
 {{ id }}-documentroot:
   file.directory:
     - unless: test -d {{ documentroot }}
