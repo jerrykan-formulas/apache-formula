@@ -8,35 +8,50 @@
 
     'ServerName': sitename,
     'ServerAlias': site.get('ServerAlias', 'www.{0}'.format(sitename)),
-
     'ServerAdmin': site.get('ServerAdmin', 'webmaster@{0}'.format(sitename)),
 
-    'UseCanonicalName': site.get('UseCanonicalName'),
-
-    'LogLevel': site.get('LogLevel', 'warn'),
+    'LogLevel': site.get('LogLevel', False),
     'ErrorLog': site.get('ErrorLog', '{0}/{1}-error.log'.format(map.logdir, sitename)),
     'LogFormat': site.get('LogFormat', '"%h %l %u %t \\\"%r\\\" %>s %O"'),
     'CustomLog': site.get('CustomLog', '{0}/{1}-access.log'.format(map.logdir, sitename)),
     
+    'UseCanonicalName': site.get('UseCanonicalName'),
+
+    'RedirectStatus': site.get('RedirectStatus', False),
     'RedirectSource': site.get('RedirectSource', '/'),
     'RedirectTarget': site.get('RedirectTarget', 'https://{0}/'.format(sitename)),
-} %}
+} -%}
 
-<VirtualHost {%- for intf in vals.interfaces %} {{intf}}:{{ vals.port }}{% endfor -%}>
-    ServerName {{ vals.ServerName }}
-    {% if site.get('ServerAlias') != False %}ServerAlias {{ vals.ServerAlias }}{% endif %}
+<VirtualHost {%- for iface in vals.interfaces %} {{iface}}:{{ vals.port }}{% endfor -%}>
+    ServerName   {{ vals.ServerName }}
+    {%- if vals.ServerAlias != False %}
+    ServerAlias  {{ vals.ServerAlias }}
+    {%- endif %}
+    {%- if vals.ServerAdmin != False %}
+    ServerAdmin  {{ vals.ServerAdmin }}
+    {%- endif %}
 
-    {% if site.get('ServerAdmin') != False %}ServerAdmin {{ vals.ServerAdmin }}{% endif %}
+    {{- '\n' -}}
 
-    {% if site.get('UseCanonicalName') %}UseCanonicalName {{ vals.UseCanonicalName }}{% endif %}
+    {%- if vals.LogLevel != False %}
+    LogLevel   {{ vals.LogLevel }}
+    {%- endif %}
+    {%- if vals.ErrorLog != False %}
+    ErrorLog   {{ vals.ErrorLog }}
+    {%- endif %}
+    {%- if vals.CustomLog != False %}
+    CustomLog  {{ vals.CustomLog }}  {{ vals.LogFormat }}
+    {%- endif %}
 
-    {% if site.get('LogLevel') != False %}LogLevel {{ vals.LogLevel }}{% endif %}
-    {% if site.get('ErrorLog') != False %}ErrorLog {{ vals.ErrorLog }}{% endif %}
-    {% if site.get('CustomLog') != False %}CustomLog {{ vals.CustomLog }} {{ vals.LogFormat }}{% endif %}
+    {%- if vals.UseCanonicalName %}
 
-    Redirect {{ vals.RedirectSource }} {{ vals.RedirectTarget }}
+    UseCanonicalName  On
+    {%- endif %}
 
-    {% if site.get('Formula_Append') %}
+    Redirect  {% if vals.RedirectStatus != False -%}{{ vals.RedirectStatus }}  {% endif -%}  {{ vals.RedirectSource }}  {{ vals.RedirectTarget }}
+
+    {%- if site.get('Formula_Append') %}
+
     {{ site.Formula_Append|indent(4) }}
-    {% endif %}
+    {%- endif %}
 </VirtualHost>
