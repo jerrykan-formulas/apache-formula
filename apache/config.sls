@@ -1,5 +1,8 @@
 {% from "apache/map.jinja" import apache with context %}
 
+{%- set os_family = salt['grains.get']('os_family') -%}
+{%- set osmajorrelease = salt['grains.get']('osmajorrelease') -%}
+
 include:
   - apache
 
@@ -7,7 +10,8 @@ include:
   file.managed:
     - template: jinja
     - source:
-      - salt://apache/files/{{ salt['grains.get']('os_family') }}/apache-{{ apache.version }}.config.jinja
+      - salt://apache/files/{{ os_family }}/{{ osmajorrelease }}/apache-{{ apache.version }}.config.jinja
+      - salt://apache/files/{{ os_family }}/apache-{{ apache.version }}.config.jinja
     - require:
       - pkg: apache
     - watch_in:
@@ -27,7 +31,8 @@ include:
   file.managed:
     - template: jinja
     - source:
-      - salt://apache/files/{{ salt['grains.get']('os_family') }}/envvars-{{ apache.version }}.jinja
+      - salt://apache/files/{{ os_family }}/{{ osmajorrelease }}/envvars-{{ apache.version }}.jinja
+      - salt://apache/files/{{ os_family }}/envvars-{{ apache.version }}.jinja
     - require:
       - pkg: apache
     - watch_in:
@@ -37,7 +42,7 @@ include:
   file.managed:
     - template: jinja
     - source:
-      - salt://apache/files/{{ salt['grains.get']('os_family') }}/ports-{{ apache.version }}.conf.jinja
+      - salt://apache/files/{{ os_family }}/ports-{{ apache.version }}.conf.jinja
     - require:
       - pkg: apache
     - watch_in:
@@ -61,7 +66,7 @@ include:
   file.managed:
     - template: jinja
     - source:
-      - salt://apache/files/{{ salt['grains.get']('os_family') }}/global.config.jinja
+      - salt://apache/files/{{ os_family }}/global.config.jinja
     - require:
       - pkg: apache
     - watch_in:
