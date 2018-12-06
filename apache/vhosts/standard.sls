@@ -3,6 +3,17 @@
 include:
   - apache
 
+{% if grains['os_family'] == "RedHat" %}
+apache-vhosts-conf:
+  file.managed:
+    - name: {{ apache.confdir }}/vhosts.conf
+    - contents: |
+        IncludeOptional {{ apache.vhostdir }}/*.conf
+    - require:
+        - pkg: apache
+        - file: {{ apache.vhostdir }}
+{% endif %}
+
 {% for id, site in salt['pillar.get']('apache:sites', {}).items() %}
 {% set documentroot = site.get('DocumentRoot', '{0}/{1}'.format(apache.wwwdir, id)) %}
 {%- set managed = site.get('managed', True) %}
@@ -22,6 +33,7 @@ include:
 {%- endif %}
     - require:
       - pkg: apache
+      - file: apache-vhosts-conf
     - watch_in:
       - module: apache-reload
 
