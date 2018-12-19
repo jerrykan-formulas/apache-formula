@@ -33,7 +33,9 @@ apache-vhosts-conf:
 {%- endif %}
     - require:
       - pkg: apache
+{%- if grains['os_family'] == "RedHat" %}
       - file: apache-vhosts-conf
+{%- endif %}
     - watch_in:
       - module: apache-reload
 
