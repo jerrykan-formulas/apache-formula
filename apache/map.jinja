@@ -151,6 +151,13 @@
         'default_site_ssl': 'default-ssl.conf',
         'use_require': True,
     },
+    'buster': {
+        'wwwdir': '/var/www',
+        'confext': '.conf',
+        'default_site': '000-default.conf',
+        'default_site_ssl': 'default-ssl.conf',
+        'use_require': True,
+    },
 }, grain='oscodename', merge=salt['grains.filter_by'](
     osfingermap
 , grain='osfinger', merge=salt['pillar.get']('apache:lookup')))) %}
