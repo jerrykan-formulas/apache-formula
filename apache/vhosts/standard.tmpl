@@ -72,8 +72,8 @@
     {{- '\n' -}}
 
     {{- if_directive('UseCanonicalName', vals.UseCanonicalName) }}
-    {{- if_directive('AllowEncodedSlashes', vals.UseCanonicalName) }}
-    {{- if_directive('DirectoryIndex', vals.UseCanonicalName) }}
+    {{- if_directive('AllowEncodedSlashes', vals.AllowEncodedSlashes) }}
+    {{- if_directive('DirectoryIndex', vals.DirectoryIndex) }}
 
     {%- if site.get('SSLCertificateFile') %}{{ '\n' }}
     SSLEngine  On
