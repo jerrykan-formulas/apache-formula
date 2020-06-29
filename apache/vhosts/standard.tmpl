@@ -2,23 +2,38 @@
 {%- from "apache/map.jinja" import apache with context -%}
 {%- set sitename = site.get('ServerName', id) -%}
 
+{%- macro _directive(key, value, indents=1) -%}
+    {{- '\n' ~ ' ' * 4 * indents -}}{{ key }}  {{ value }}
+{%- endmacro -%}
+
+{%- macro non_false_directive(key, value, indents=1) -%}
+    {%- if value != False -%}
+        {{- _directive(key, value, indents) -}}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- macro if_directive(key, value, indents=1) -%}
+    {%- if value -%}
+        {{- _directive(key, value, indents) -}}
+    {%- endif -%}
+{%- endmacro -%}
+
 {%- set vals = {
     'interfaces': site.get('interface', '*').split(),
     'port': site.get('port', '80'),
 
     'ServerName': sitename,
     'ServerAlias': site.get('ServerAlias', 'www.{0}'.format(sitename)),
-
     'ServerAdmin': site.get('ServerAdmin', 'webmaster@{0}'.format(sitename)),
 
-    'DirectoryIndex': site.get('DirectoryIndex'),
-    'UseCanonicalName': site.get('UseCanonicalName'),
-    'AllowEncodedSlashes': site.get('AllowEncodedSlashes', 'Off'),
-
-    'LogLevel': site.get('LogLevel', 'warn'),
+    'LogLevel': site.get('LogLevel', False),
     'ErrorLog': site.get('ErrorLog', '{0}/{1}-error.log'.format(map.logdir, sitename)),
     'LogFormat': site.get('LogFormat', '"%h %l %u %t \\\"%r\\\" %>s %O"'),
     'CustomLog': site.get('CustomLog', '{0}/{1}-access.log'.format(map.logdir, sitename)),
+
+    'UseCanonicalName': site.get('UseCanonicalName'),
+    'DirectoryIndex': site.get('DirectoryIndex'),
+    'AllowEncodedSlashes': site.get('AllowEncodedSlashes'),
 
     'DocumentRoot': site.get('DocumentRoot', '{0}/{1}'.format(map.wwwdir, sitename)),
     'VirtualDocumentRoot': site.get('VirtualDocumentRoot'),
@@ -38,39 +53,43 @@
     },
 } -%}
 
-<VirtualHost {% for intf in vals.interfaces %} {{intf}}:{{ vals.port }}{% endfor -%}>
-    ServerName {{ vals.ServerName }}
-    {% if site.get('ServerAlias') != False %}ServerAlias {{ vals.ServerAlias }}{% endif %}
+<VirtualHost {%- for iface in vals.interfaces %} {{iface}}:{{ vals.port }}{% endfor -%}>
+    ServerName   {{ vals.ServerName }}
+    {{- non_false_directive('ServerAlias', vals.ServerAlias) }}
+    {{- non_false_directive('ServerAdmin', vals.ServerAdmin) }}
 
-    {% if site.get('ServerAdmin') != False %}ServerAdmin {{ vals.ServerAdmin }}{% endif %}
+    {{- '\n' -}}
 
-    {% if site.get('DirectoryIndex') -%}DirectoryIndex {{ vals.DirectoryIndex }}{% endif %}
-    {% if site.get('UseCanonicalName') -%}UseCanonicalName {{ vals.UseCanonicalName }}{% endif %}
-    {% if site.get('AllowEncodedSlashes') != False -%}AllowEncodedSlashes {{ vals.AllowEncodedSlashes }}{% endif %}
+    {{- non_false_directive('LogLevel ', vals.LogLevel) }}
+    {{- non_false_directive('ErrorLog ', vals.ErrorLog) }}
+    {{- non_false_directive('CustomLog', vals.CustomLog ~ '  ' ~ vals.LogFormat) }}
 
-    {% if site.get('LogLevel') != False -%}LogLevel {{ vals.LogLevel }}{% endif %}
-    {% if site.get('ErrorLog') != False -%}ErrorLog {{ vals.ErrorLog }}{% endif %}
-    {% if site.get('CustomLog') != False -%}CustomLog {{ vals.CustomLog }} {{ vals.LogFormat }}{% endif %}
+    {{- '\n' -}}
 
-    {% if site.get('DocumentRoot') != False -%}DocumentRoot {{ vals.DocumentRoot }}{% endif %}
-    {% if site.get('VirtualDocumentRoot') -%}VirtualDocumentRoot {{ vals.VirtualDocumentRoot }}{% endif %}
+    {{- non_false_directive('DocumentRoot', vals.DocumentRoot) }}
+    {{- if_directive('VirtualDocumentRoot', vals.VirtualDocumentRoot) }}
 
-    {%- if site.get('SSLCertificateFile') %}
-    SSLEngine on
-    SSLCertificateFile {{ site.SSLCertificateFile }}
-    {%-  if site.get('SSLCertificateKeyFile') %}
-    SSLCertificateKeyFile {{ site.SSLCertificateKeyFile }}
-    {%-   endif %}
-    {%-   if site.get('SSLCertificateChainFile') %}
-    SSLCertificateChainFile {{ site.SSLCertificateChainFile}}
-    {%-   endif %}
+    {{- '\n' -}}
+
+    {{- if_directive('UseCanonicalName', vals.UseCanonicalName) }}
+    {{- if_directive('AllowEncodedSlashes', vals.AllowEncodedSlashes) }}
+    {{- if_directive('DirectoryIndex', vals.DirectoryIndex) }}
+
+    {%- if site.get('SSLCertificateFile') %}{{ '\n' }}
+    SSLEngine  On
+    SSLCertificateFile     {{ site.SSLCertificateFile }}
+    {{- if_directive('SSLCertificateKeyFile', site.get('SSLCertificateKeyFile')) }}
+    {{- if_directive('SSLCertificateChainFile', site.get('SSLCertificateChainFile')) }}
     {%- endif %}
 
-    {%- for loc, path in site.get('Alias', {}).items() %}
-    Alias {{ loc }} {{ path }}
+    {%- if site.get('Alias') %}{{ '\n' }}
+    {%- for loc, path in site.get('Alias', {})|dictsort %}
+    Alias  {{ loc }}  {{ path }}
     {%- endfor %}
+    {%- endif %}
 
-    {%- for path, dir in site.get('Directory', {}).items() -%}
+    {%- if site.get('Directory') %}
+    {%- for path, dir in site.get('Directory', {})|dictsort -%}{{ '\n' }}
     {%- set dvals = {
         'Options': dir.get('Options', vals.Directory.Options),
         'Order': dir.get('Order', vals.Directory.Order),
@@ -78,51 +97,64 @@
         'Require': dir.get('Require', vals.Directory.Require),
         'AllowOverride': dir.get('AllowOverride', vals.Directory.AllowOverride),
         'Dav': dir.get('Dav', False),
-    } %}
+    } -%}
 
     {%- if path == 'default' %}{% set path = vals.Directory_default %}{% endif %}
-
     <Directory "{{ path }}">
-        {% if dvals.get('Options') != False %}Options {{ dvals.Options }}{% endif %}
-        {% if apache.use_require %}
-        {% if dvals.get('Require') != False %}Require {{dvals.Require}}{% endif %}
-        {% else %}
-        {% if dvals.get('Order') != False %}Order {{ dvals.Order }}{% endif %}
-        {% if dvals.get('Allow') != False %}Allow {{ dvals.Allow }}{% endif %}
-        {% endif %}
-        {% if dvals.get('AllowOverride') != False %}AllowOverride {{ dvals.AllowOverride }}{% endif %}
-        {% if dvals.get('Dav') != False %}Dav On{% endif %}
+        {{- if_directive('Options', dvals.get('Options'), indents=2) }}
+        {%- if apache.use_require %}
+        {%-   set requires = dvals.Require if dvals.Require is list else [dvals.Require] -%}
+        {%-   for require in requires %}
+        Require  {{ require }}
+        {%-   endfor %}
+        {%- else %}
+            {{- non_false_directive('Order', dvals.get('Order'), indents=2) }}
+            {{- non_false_directive('Allow', dvals.get('Allow'), indents=2) }}
+        {%- endif %}
+        {{- non_false_directive('AllowOverride', dvals.get('AllowOverride'), indents=2) }}
+        {{- non_false_directive('Dav', dvals.get('Dav') != False and 'On', indents=2) }}
 
-        {% if dir.get('Formula_Append') %}
+        {%- if dir.get('Formula_Append') %}{{ '\n' }}
         {{ dir.Formula_Append|indent(8) }}
         {% endif %}
     </Directory>
     {%- endfor %}
+    {%- endif %}
 
-    {%- for path, loc in site.get('Location', {}).items() %}
+    {%- if site.get('Location') %}
+    {%- for path, loc in site.get('Location', {}).items() %}{{ '\n' }}
     {%- set lvals = {
         'Order': loc.get('Order', vals.Location.Order),
         'Allow': loc.get('Allow', vals.Location.Allow),
         'Require': loc.get('Require', vals.Location.Require),
         'Dav': loc.get('Dav', False),
     } %}
-
     <Location "{{ path }}">
-        {% if apache.use_require %}
-        {%- if lvals.get('Require') != False %}Require {{lvals.Require}}{% endif %}
-        {% else %}
-        {%- if lvals.get('Order') != False %}Order {{ lvals.Order }}{% endif %}
-        {%- if lvals.get('Allow') != False %}Allow {{ lvals.Allow }}{% endif %}
-        {% endif %}
-        {%- if lvals.get('Dav') != False %}Dav On{% endif %}
+        {%- if loc.get('AuthOptions') %}
+        {%- for option, value in loc.AuthOptions|dictsort %}
+        {{ option }}  {{ value }}
+        {%- endfor %}{{ '\n' }}
+        {%- endif %}
 
-        {%- if loc.get('Formula_Append') %}
+        {%- if apache.use_require %}
+        {%-   set requires = lvals.Require if lvals.Require is list else [lvals.Require] -%}
+        {%-   for require in requires %}
+        Require  {{ require }}
+        {%-   endfor %}
+        {%- else %}
+            {{- non_false_directive('Order', lvals.Order, indents=2) }}
+            {{- non_false_directive('Allow', lvals.Allow, indents=2) }}
+        {%- endif %}
+        {{- non_false_directive('Dav', lvals.get('Dav') != False and 'On', indents=2) }}
+
+        {%- if loc.get('Formula_Append') %}{{ '\n' }}
         {{ loc.Formula_Append|indent(8) }}
-        {% endif %}
+        {%- endif %}
     </Location>
-    {% endfor %}
+    {%- endfor %}
+    {%- endif %}
 
-    {%- if site.get('Formula_Append') %}
+    {%- if site.get('Formula_Append') %}{{ '\n' }}
     {{ site.Formula_Append|indent(4) }}
-    {% endif %}
+    {%- endif %}
 </VirtualHost>
