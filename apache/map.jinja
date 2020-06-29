@@ -29,6 +29,7 @@
 
         'mod_wsgi': 'libapache2-mod-wsgi',
         'mod_php5': 'libapache2-mod-php5',
+        'mod_php_pkg': 'libapache2-mod-php',
         'mod_fcgid': 'libapache2-mod-fcgid',
         'mod_pagespeed_source': 'https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-stable_current_amd64.deb',
 
@@ -157,6 +158,8 @@
         'default_site': '000-default.conf',
         'default_site_ssl': 'default-ssl.conf',
         'use_require': True,
+
+        'mod_php': 'php7.3',
     },
 }, grain='oscodename', merge=salt['grains.filter_by'](
     osfingermap

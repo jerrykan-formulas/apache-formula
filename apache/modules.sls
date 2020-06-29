@@ -1,6 +1,6 @@
 {% if grains['os_family']=="Debian" %}
 {%- set module_includes = [
-  'dav_svn', 'fcgid', 'mpm', 'pagespeed', 'php5', 'proxy_http', 'proxy',
+  'dav_svn', 'fcgid', 'mpm', 'pagespeed', 'php', 'php5', 'proxy_http', 'proxy',
   'remoteips', 'security', 'ssl', 'wsgi',
 ] -%}
 
